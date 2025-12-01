@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "n8n.fullname" . }}
+  labels:
+    {{- include "n8n.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "n8n.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "n8n.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "n8n.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.image.digest }}
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+          {{- else }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: DB_TYPE
+              value: {{ .Values.database.type | quote }}
+            - name: DB_POSTGRESDB_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: DB_POSTGRESDB_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: DB_POSTGRESDB_DATABASE
+              value: {{ .Values.database.name | quote }}
+            - name: DB_POSTGRESDB_USER
+              value: {{ .Values.database.user | quote }}
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "n8n.fullname" . }}-db
+                  key: password
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "n8n.fullname" . }}-config
+                  key: encryption-key
+            - name: GENERIC_TIMEZONE
+              value: {{ .Values.config.timezone | quote }}
+            - name: N8N_USER_MANAGEMENT_DISABLED
+              value: {{ .Values.config.userManagementDisabled | quote }}
+            {{- if .Values.aiStack.enabled }}
+            {{- if .Values.aiStack.ollama.enabled }}
+            - name: OLLAMA_HOST
+              value: "http://{{ include "n8n.fullname" . }}-ollama:{{ .Values.aiStack.ollama.service.port }}"
+            {{- end }}
+            {{- if .Values.aiStack.qdrant.enabled }}
+            - name: QDRANT_URL
+              value: "http://{{ include "n8n.fullname" . }}-qdrant:{{ .Values.aiStack.qdrant.service.port }}"
+            {{- end }}
+            {{- end }}
+            {{- if .Values.auth.enabled }}
+            - name: AUTH_SERVICE_URL
+              value: {{ .Values.auth.serviceUrl | quote }}
+            {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: /home/node/.n8n
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "n8n.fullname" . }}-data
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

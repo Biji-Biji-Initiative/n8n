@@ -1,0 +1,175 @@
+# Default values for n8n
+# This is a YAML-formatted file.
+
+# n8n image configuration
+image:
+  repository: n8nio/n8n
+  tag: "latest"
+  digest: ""
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 5678
+  targetPort: 5678
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  host: ""  # Set in overlay
+  domain: ""
+  tls:
+    enabled: true
+    secretName: ""
+
+# Database configuration (PostgreSQL)
+database:
+  type: "postgresdb"
+  host: "n8n-postgres-postgresql"
+  port: 5432
+  name: "n8n"
+  user: "n8n"
+  password: "changeme"  # Override in production with ExternalSecret
+  sslmode: "disable"
+
+# n8n configuration
+config:
+  # Timezone
+  timezone: "America/New_York"
+  # Encryption key (change in production!)
+  encryptionKey: "n8n-encryption-key"
+  # User management
+  userManagementDisabled: false
+  # Basic auth (optional)
+  basicAuth:
+    active: false
+    user: ""
+    password: ""
+
+# Resource limits
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 5678
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 5678
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+# Storage for workflows and data
+persistence:
+  enabled: true
+  storageClass: "standard"
+  size: "10Gi"
+  accessMode: ReadWriteOnce
+
+# Auth configuration
+auth:
+  enabled: false
+  serviceUrl: ""
+  skipValidation: false
+
+# External Secrets
+externalSecret:
+  enabled: false
+  secretStore: "gcp-secret-manager"
+  path: ""
+
+# Horizontal Pod Autoscaling
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+# AI Stack Configuration
+aiStack:
+  enabled: true
+
+  # Ollama (LLM inference)
+  ollama:
+    enabled: true
+    image:
+      repository: ollama/ollama
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1000m"
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+    persistence:
+      enabled: true
+      storageClass: "standard"
+      size: "50Gi"
+      accessMode: ReadWriteOnce
+    service:
+      port: 11434
+    # Models to pre-load
+    models:
+      - "llama2"
+      - "mistral"
+
+  # Qdrant (Vector Database)
+  qdrant:
+    enabled: true
+    image:
+      repository: qdrant/qdrant
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+    persistence:
+      enabled: true
+      storageClass: "standard"
+      size: "20Gi"
+      accessMode: ReadWriteOnce
+    service:
+      port: 6333
+      grpcPort: 6334
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
