@@ -34,12 +34,31 @@ ingress:
 # Database configuration (PostgreSQL)
 database:
   type: "postgresdb"
-  host: "n8n-postgres-postgresql"
+  host: "n8n-local-postgresql"  # Will be <release-name>-postgresql
   port: 5432
   name: "n8n"
   user: "n8n"
   password: "changeme"  # Override in production with ExternalSecret
   sslmode: "disable"
+
+# PostgreSQL subchart configuration
+postgresql:
+  enabled: true
+  auth:
+    username: "n8n"
+    password: "changeme"  # Override in production
+    database: "n8n"
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
 
 # n8n configuration
 config:

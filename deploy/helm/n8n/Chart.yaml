@@ -16,3 +16,8 @@ maintainers:
 home: https://n8n.io
 sources:
   - https://github.com/n8n-io/n8n
+dependencies:
+  - name: postgresql
+    version: "15.5.38"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
