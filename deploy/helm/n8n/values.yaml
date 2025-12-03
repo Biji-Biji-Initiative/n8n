@@ -110,6 +110,18 @@ auth:
   serviceUrl: ""
   skipValidation: false
 
+# SSO/OIDC configuration for n8n Enterprise or community SSO
+sso:
+  enabled: false
+  # OIDC Configuration
+  oidc:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+    issuerUrl: ""    # e.g., https://auth.example.com/application/o/n8n/
+    # Optional: Display name for login button
+    displayName: "Authentik"
+
 # External Secrets
 externalSecret:
   enabled: false

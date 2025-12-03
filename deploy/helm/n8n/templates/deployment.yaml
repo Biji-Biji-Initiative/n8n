@@ -81,6 +81,23 @@ spec:
             - name: AUTH_SERVICE_URL
               value: {{ .Values.auth.serviceUrl | quote }}
             {{- end }}
+            {{- if and .Values.sso.enabled .Values.sso.oidc.enabled }}
+            - name: N8N_SSO_OIDC_ENABLED
+              value: "true"
+            - name: N8N_SSO_OIDC_CLIENT_ID
+              value: {{ .Values.sso.oidc.clientId | quote }}
+            - name: N8N_SSO_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "n8n.fullname" . }}-sso
+                  key: oidc-client-secret
+            - name: N8N_SSO_OIDC_ISSUER_URL
+              value: {{ .Values.sso.oidc.issuerUrl | quote }}
+            {{- if .Values.sso.oidc.displayName }}
+            - name: N8N_SSO_OIDC_DISPLAY_NAME
+              value: {{ .Values.sso.oidc.displayName | quote }}
+            {{- end }}
+            {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
