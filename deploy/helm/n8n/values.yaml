@@ -135,7 +135,18 @@ forwardAuth:
 externalSecret:
   enabled: false
   secretStore: "gcp-secret-manager"
-  path: ""
+  keys:
+    dbPassword: ""
+    encryptionKey: ""
+    oidcClientSecret: ""
+
+# Extension points for chart consumers
+extraEnv: []
+extraEnvFrom: []
+extraVolumeMounts: []
+extraVolumes: []
+extraInitContainers: []
+extraContainers: []
 
 # Horizontal Pod Autoscaling
 autoscaling:
