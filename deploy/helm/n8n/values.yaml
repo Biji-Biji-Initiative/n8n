@@ -122,6 +122,15 @@ sso:
     # Optional: Display name for login button
     displayName: "Authentik"
 
+# Forward Auth configuration (for proxy authentication via Authentik/Authelia)
+# This bypasses n8n's internal login by trusting headers from the reverse proxy
+forwardAuth:
+  enabled: false
+  # Header name containing the authenticated user's email
+  # For Authentik: X-authentik-email
+  # For Authelia: Remote-Email
+  headerName: "X-authentik-email"
+
 # External Secrets
 externalSecret:
   enabled: false
@@ -192,6 +201,7 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 podAnnotations: {}
+podLabels: {}
 
 podSecurityContext:
   fsGroup: 1000

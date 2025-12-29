@@ -20,6 +20,9 @@ spec:
         {{- end }}
       labels:
         {{- include "n8n.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.podSecurityContext }}
       securityContext:
@@ -98,6 +101,12 @@ spec:
               value: {{ .Values.sso.oidc.displayName | quote }}
             {{- end }}
             {{- end }}
+            {{- if .Values.forwardAuth.enabled }}
+            - name: EXTERNAL_HOOK_FILES
+              value: "/hooks/hooks.js"
+            - name: N8N_FORWARD_AUTH_HEADER
+              value: {{ .Values.forwardAuth.headerName | quote }}
+            {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
@@ -110,16 +119,26 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.persistence.enabled }}
           volumeMounts:
+          {{- if .Values.persistence.enabled }}
             - name: data
               mountPath: /home/node/.n8n
           {{- end }}
-      {{- if .Values.persistence.enabled }}
+          {{- if .Values.forwardAuth.enabled }}
+            - name: hooks
+              mountPath: /hooks
+              readOnly: true
+          {{- end }}
       volumes:
+      {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "n8n.fullname" . }}-data
+      {{- end }}
+      {{- if .Values.forwardAuth.enabled }}
+        - name: hooks
+          configMap:
+            name: {{ include "n8n.fullname" . }}-hooks
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
