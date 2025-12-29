@@ -32,14 +32,19 @@ data:
                         const email = req.headers[process.env.N8N_FORWARD_AUTH_HEADER.toLowerCase()]
                         if (!email) return next()
 
-                        const user = await this.dbCollections.User.findOneBy({email})
+                        // Load user with role relation (required for issueCookie)
+                        const user = await this.dbCollections.User.findOne({
+                            where: { email },
+                            relations: ['role']
+                        })
                         if (!user) {
                             res.statusCode = 401
                             res.end(`User ${email} not found in n8n. Please set up the owner account first.`)
                             return
                         }
 
-                        issueCookie(res, user)
+                        // issueCookie(res, user, usedMfa, browserId)
+                        issueCookie(res, user, false)
                         return next()
                     }))
                 },
