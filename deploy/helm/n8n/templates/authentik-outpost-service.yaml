@@ -1,0 +1,18 @@
+{{- if and .Values.auth.enabled (eq .Values.auth.mode "forward_single") }}
+# ExternalName service to access the Authentik embedded outpost from this namespace
+# Required for forward_single mode to route /outpost.goauthentik.io/ path
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "n8n.fullname" . }}-authentik-outpost
+  labels:
+    {{- include "n8n.labels" . | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ .Values.auth.outpostService }}.{{ .Values.auth.outpostNamespace }}.svc.cluster.local
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: http
+{{- end }}
