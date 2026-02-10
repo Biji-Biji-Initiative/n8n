@@ -10,7 +10,6 @@ data:
     // Forward Auth SSO Hook for n8n
     // Auto-login users based on trusted proxy headers (e.g., from Authentik)
     const { dirname, resolve } = require('path')
-    const Layer = require('router/lib/layer')
     const { issueCookie } = require(resolve(dirname(require.resolve('n8n')), 'auth/jwt'))
     const ignoreAuthRegexp = /^\/(assets|healthz|webhook|rest\/oauth2-credential)/
 
@@ -18,12 +17,9 @@ data:
         n8n: {
             ready: [
                 async function ({ app }, config) {
-                    const { stack } = app.router
-                    const index = stack.findIndex((l) => l.name === 'cookieParser')
-                    stack.splice(index + 1, 0, new Layer('/', {
-                        strict: false,
-                        end: false
-                    }, async (req, res, next) => {
+                    // Register middleware using Express' public API to avoid relying on internal modules
+                    // that may change between n8n/express versions.
+                    app.use(async (req, res, next) => {
                         if (ignoreAuthRegexp.test(req.url)) return next()
                         if (!config.get('userManagement.isInstanceOwnerSetUp', false)) return next()
                         if (req.cookies?.['n8n-auth']) return next()
@@ -46,7 +42,7 @@ data:
                         // issueCookie(res, user, usedMfa, browserId)
                         issueCookie(res, user, false)
                         return next()
-                    }))
+                    })
                 },
             ],
         },
