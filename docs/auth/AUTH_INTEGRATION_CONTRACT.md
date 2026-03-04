@@ -23,8 +23,8 @@
 ## Required Runtime Configuration
 
 - Required env vars:
-  - `TODO_ENV_VAR_1`
-  - `TODO_ENV_VAR_2`
+  - `AUTH_SERVICE_URL`
+  - `N8N_FORWARD_AUTH_HEADER`
 - Secret source:
   - Infisical path: `/k8s/n8n`
   - ESO target secret: `n8n-secrets`
@@ -50,8 +50,8 @@ If pattern uses OIDC:
 ## Verification
 
 - Local:
-  - `TODO_LOCAL_CHECK_1`
-  - `TODO_LOCAL_CHECK_2`
+  - `rg -n 'AUTH_SERVICE_URL|N8N_FORWARD_AUTH_HEADER|N8N_SSO_OIDC_' deploy/helm/n8n/templates`
+  - `helm lint deploy/helm/n8n`
 - Platform:
   - `auth-verify contract-check --format json`
   - `auth-verify drift-detect --format json`
