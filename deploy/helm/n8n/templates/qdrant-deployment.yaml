@@ -44,6 +44,28 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "n8n.fullname" . }}-qdrant-data
       {{- end }}
+      {{- $qdrant := .Values.aiStack.qdrant | default dict }}
+      {{- if hasKey $qdrant "nodeSelector" }}
+      nodeSelector:
+        {{- toYaml $qdrant.nodeSelector | nindent 8 }}
+      {{- else if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if hasKey $qdrant "affinity" }}
+      affinity:
+        {{- toYaml $qdrant.affinity | nindent 8 }}
+      {{- else if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if hasKey $qdrant "tolerations" }}
+      tolerations:
+        {{- toYaml $qdrant.tolerations | nindent 8 }}
+      {{- else if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

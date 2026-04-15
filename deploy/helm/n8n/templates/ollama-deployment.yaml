@@ -41,6 +41,28 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "n8n.fullname" . }}-ollama-data
       {{- end }}
+      {{- $ollama := .Values.aiStack.ollama | default dict }}
+      {{- if hasKey $ollama "nodeSelector" }}
+      nodeSelector:
+        {{- toYaml $ollama.nodeSelector | nindent 8 }}
+      {{- else if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if hasKey $ollama "affinity" }}
+      affinity:
+        {{- toYaml $ollama.affinity | nindent 8 }}
+      {{- else if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if hasKey $ollama "tolerations" }}
+      tolerations:
+        {{- toYaml $ollama.tolerations | nindent 8 }}
+      {{- else if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
