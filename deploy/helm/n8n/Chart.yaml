@@ -2,7 +2,7 @@ apiVersion: v2
 name: n8n
 description: Workflow automation platform with AI capabilities (Ollama + Qdrant)
 type: application
-version: 1.0.0
+version: 1.1.0
 appVersion: "latest"
 keywords:
   - n8n

@@ -208,6 +208,25 @@ aiStack:
       port: 6333
       grpcPort: 6334
 
+# Per-role placement overrides.
+#
+# The chart supports role-specific nodeSelector/affinity/tolerations for the
+# main n8n server, ollama, and qdrant deployments. The fallback rules are:
+#
+#   - If a per-role key is OMITTED, the deployment inherits the global values
+#     defined below (nodeSelector, affinity, tolerations).
+#   - If a per-role key is PRESENT (including an explicitly empty map `{}` or
+#     list `[]`), that value is honored as an intentional override and the
+#     global value is ignored for that deployment.
+#
+# Per-role keys live at:
+#   - server.nodeSelector / server.affinity / server.tolerations
+#   - aiStack.ollama.nodeSelector / aiStack.ollama.affinity / aiStack.ollama.tolerations
+#   - aiStack.qdrant.nodeSelector / aiStack.qdrant.affinity / aiStack.qdrant.tolerations
+#
+# See the nonprod n8n role-separation design for the lane model this enables.
+server: {}
+
 nodeSelector: {}
 tolerations: []
 affinity: {}
