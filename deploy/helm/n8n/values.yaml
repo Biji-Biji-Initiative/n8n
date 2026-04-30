@@ -210,8 +210,9 @@ aiStack:
 
 # Per-role placement overrides.
 #
-# The chart supports role-specific nodeSelector/affinity/tolerations for the
-# main n8n server, ollama, and qdrant deployments. The fallback rules are:
+# The chart supports role-specific rollout strategy for the main n8n server and
+# role-specific nodeSelector/affinity/tolerations for the main n8n server,
+# ollama, and qdrant deployments. The fallback rules are:
 #
 #   - If a per-role key is OMITTED, the deployment inherits the global values
 #     defined below (nodeSelector, affinity, tolerations).
@@ -220,9 +221,15 @@ aiStack:
 #     global value is ignored for that deployment.
 #
 # Per-role keys live at:
+#   - server.strategy
 #   - server.nodeSelector / server.affinity / server.tolerations
 #   - aiStack.ollama.nodeSelector / aiStack.ollama.affinity / aiStack.ollama.tolerations
 #   - aiStack.qdrant.nodeSelector / aiStack.qdrant.affinity / aiStack.qdrant.tolerations
+#
+# The main n8n server renders `strategy.type: Recreate` by default when it
+# mounts a ReadWriteOnce PVC so rollouts do not create a second pod that races
+# for the same volume. Set `server.strategy` explicitly only when the
+# storage/access-mode contract has been reviewed.
 #
 # See the nonprod n8n role-separation design for the lane model this enables.
 server: {}

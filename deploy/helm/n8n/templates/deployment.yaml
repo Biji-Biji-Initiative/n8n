@@ -8,6 +8,14 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- $server := .Values.server | default dict }}
+  {{- if hasKey $server "strategy" }}
+  strategy:
+    {{- toYaml $server.strategy | nindent 4 }}
+  {{- else if and .Values.persistence.enabled (eq (default "ReadWriteOnce" .Values.persistence.accessMode) "ReadWriteOnce") }}
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "n8n.selectorLabels" . | nindent 6 }}
@@ -165,7 +173,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- end }}
-      {{- $server := .Values.server | default dict }}
       {{- if hasKey $server "nodeSelector" }}
       nodeSelector:
         {{- toYaml $server.nodeSelector | nindent 8 }}
