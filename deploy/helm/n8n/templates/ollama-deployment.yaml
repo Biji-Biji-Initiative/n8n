@@ -8,6 +8,8 @@ metadata:
     app.kubernetes.io/component: ollama
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "n8n.selectorLabels" . | nindent 6 }}
