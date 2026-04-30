@@ -8,13 +8,8 @@ metadata:
     app.kubernetes.io/component: qdrant
 spec:
   replicas: 1
-  {{- if hasKey (.Values.aiStack.qdrant | default dict) "strategy" }}
-  strategy:
-    {{- toYaml .Values.aiStack.qdrant.strategy | nindent 4 }}
-  {{- else if and .Values.aiStack.qdrant.persistence.enabled (eq (default "ReadWriteOnce" .Values.aiStack.qdrant.persistence.accessMode) "ReadWriteOnce") }}
   strategy:
     type: Recreate
-  {{- end }}
   selector:
     matchLabels:
       {{- include "n8n.selectorLabels" . | nindent 6 }}

@@ -8,13 +8,8 @@ metadata:
     app.kubernetes.io/component: ollama
 spec:
   replicas: 1
-  {{- if hasKey (.Values.aiStack.ollama | default dict) "strategy" }}
-  strategy:
-    {{- toYaml .Values.aiStack.ollama.strategy | nindent 4 }}
-  {{- else if and .Values.aiStack.ollama.persistence.enabled (eq (default "ReadWriteOnce" .Values.aiStack.ollama.persistence.accessMode) "ReadWriteOnce") }}
   strategy:
     type: Recreate
-  {{- end }}
   selector:
     matchLabels:
       {{- include "n8n.selectorLabels" . | nindent 6 }}
