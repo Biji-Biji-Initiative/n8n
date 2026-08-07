@@ -31,8 +31,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-    mem_limit: ${N8N_QDRANT_MEMORY_LIMIT:-1g}
-    cpus: ${N8N_QDRANT_CPU_LIMIT:-0.50}
+    # Nonprod default: more than 14x the observed/VPA target while avoiding
+    # the 2 GiB source limit for a currently near-empty experimental vector store.
+    # An operator may raise this explicit override after workload evidence.
+    mem_limit: ${N8N_QDRANT_MEMORY_LIMIT:-512m}
+    cpus: ${N8N_QDRANT_CPU_LIMIT:-0.25}
 
   n8n:
     image: n8nio/n8n:2.6.3
@@ -70,8 +73,10 @@ services:
       timeout: 5s
       retries: 12
       start_period: 60s
-    mem_limit: ${N8N_MEMORY_LIMIT:-1g}
-    cpus: ${N8N_CPU_LIMIT:-1.00}
+    # Nonprod default: 768 MiB is more than twice the current VPA target and
+    # remains overrideable for a demonstrated workflow workload.
+    mem_limit: ${N8N_MEMORY_LIMIT:-768m}
+    cpus: ${N8N_CPU_LIMIT:-0.50}
 
 volumes:
   postgres-data:

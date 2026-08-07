@@ -12,6 +12,16 @@ This runbook moves `n8n-dev` and `n8n-staging` to separate Coolify Compose
 applications. It never authorizes production work, canonical-route changes,
 or deletion of Kubernetes state.
 
+## Resource envelope
+
+The default target cap per environment is 1.75 GiB and 1.25 CPU: PostgreSQL
+uses 512 MiB / 0.50 CPU, Qdrant 512 MiB / 0.25 CPU, and n8n 768 MiB / 0.50
+CPU. The two shadows therefore cap at 3.5 GiB and 2.5 CPU combined. These
+values are conservative multiples of the 2026-08-08 live/VPA observations;
+they are not a claim that every workflow is safe at that size. Raise an
+explicit `N8N_*_MEMORY_LIMIT` or `N8N_*_CPU_LIMIT` only with workload evidence,
+then record that evidence in the migration packet.
+
 ## Target contract
 
 `deploy/coolify/compose.yaml` is the target runtime contract. Each environment
