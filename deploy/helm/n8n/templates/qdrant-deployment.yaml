@@ -7,7 +7,10 @@ metadata:
     {{- include "n8n.labels" . | nindent 4 }}
     app.kubernetes.io/component: qdrant
 spec:
-  replicas: 1
+  # Keep an explicit zero valid so nonprod can park the unused vector service
+  # without disabling the chart gate and pruning its PVC.
+  {{- $qdrant := .Values.aiStack.qdrant | default dict }}
+  replicas: {{ if hasKey $qdrant "replicaCount" }}{{ $qdrant.replicaCount }}{{ else }}1{{ end }}
   strategy:
     type: Recreate
   selector:
@@ -46,7 +49,6 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "n8n.fullname" . }}-qdrant-data
       {{- end }}
-      {{- $qdrant := .Values.aiStack.qdrant | default dict }}
       {{- if hasKey $qdrant "nodeSelector" }}
       nodeSelector:
         {{- toYaml $qdrant.nodeSelector | nindent 8 }}

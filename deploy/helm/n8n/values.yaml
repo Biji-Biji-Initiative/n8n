@@ -188,6 +188,9 @@ aiStack:
   # Qdrant (Vector Database)
   qdrant:
     enabled: true
+    # Set 0 to park the Deployment while retaining the PVC. The chart must not
+    # use Helm's `default` for this value because it would coerce zero to one.
+    replicaCount: 1
     image:
       repository: qdrant/qdrant
       tag: "latest"
