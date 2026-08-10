@@ -14,21 +14,21 @@ or deletion of Kubernetes state.
 
 ## Resource envelope
 
-The default target cap per environment is 1.75 GiB and 1.25 CPU: PostgreSQL
-uses 512 MiB / 0.50 CPU, Qdrant 512 MiB / 0.25 CPU, and n8n 768 MiB / 0.50
-CPU. The two shadows therefore cap at 3.5 GiB and 2.5 CPU combined. These
-values are conservative multiples of the 2026-08-08 live/VPA observations;
-they are not a claim that every workflow is safe at that size. Raise an
-explicit `N8N_*_MEMORY_LIMIT` or `N8N_*_CPU_LIMIT` only with workload evidence,
-then record that evidence in the migration packet.
+The default target cap per environment is 1.25 GiB and 1.00 CPU: PostgreSQL
+uses 512 MiB / 0.50 CPU and n8n uses 768 MiB / 0.50 CPU. The two shadows
+therefore cap at 2.5 GiB and 2.0 CPU combined. These values are conservative
+multiples of the 2026-08-08 live/VPA observations; they are not a claim that
+every workflow is safe at that size. Raise an explicit
+`N8N_*_MEMORY_LIMIT` or `N8N_*_CPU_LIMIT` only with workload evidence, then
+record that evidence in the migration packet.
 
 ## Target contract
 
 `deploy/coolify/compose.yaml` is the target runtime contract. Each environment
-gets an isolated application and named volumes for PostgreSQL, `/home/node/.n8n`,
-and Qdrant. The images are pinned to the current nonprod runtime versions.
-Ollama is intentionally absent: it is an unused experimental cache and is not
-required for n8n workflow, credential, or Qdrant preservation.
+gets an isolated application and named volumes for PostgreSQL and
+`/home/node/.n8n`. Ollama and Qdrant are intentionally absent: the live vector
+stores contain only their initialization files, and neither is required for
+n8n workflow or credential preservation.
 
 Values are mapped from the native environment secret authority into the matching
 `/deploy/n8n` authority. The target must preserve the source `N8N_ENCRYPTION_KEY`;
@@ -45,11 +45,11 @@ cannot be read.
    ```
 
 2. Take and verify a current source backup before any quiesce or data export.
-   Preserve a PostgreSQL custom dump, a tar archive of `/home/node/.n8n`, and a
-   Qdrant snapshot or a quiescent Qdrant storage archive for each environment.
+   Preserve a PostgreSQL custom dump and a tar archive of `/home/node/.n8n`
+   for each environment.
 3. Restore only into a new, isolated Coolify application. Verify PostgreSQL
    connectivity, encryption-key readability, workflow/credential metadata read,
-   Qdrant collection access, and the n8n `/healthz` endpoint.
+   and the n8n `/healthz` endpoint.
 4. Route only DNS-only `n8n-dev.deploy.mereka.io` and
    `n8n-staging.deploy.mereka.io` shadows after their certificates and n8n
    authenticated admin login are proven. Do not change canonical n8n hosts in
