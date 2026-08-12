@@ -21,29 +21,11 @@ services:
     mem_limit: ${N8N_POSTGRES_MEMORY_LIMIT:-512m}
     cpus: ${N8N_POSTGRES_CPU_LIMIT:-0.50}
 
-  qdrant:
-    image: qdrant/qdrant:v1.17.0
-    restart: unless-stopped
-    volumes:
-      - qdrant-data:/qdrant/storage
-    healthcheck:
-      test: ["CMD-SHELL", "grep -q ':18BD' /proc/net/tcp /proc/net/tcp6"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    # Nonprod default: more than 14x the observed/VPA target while avoiding
-    # the 2 GiB source limit for a currently near-empty experimental vector store.
-    # An operator may raise this explicit override after workload evidence.
-    mem_limit: ${N8N_QDRANT_MEMORY_LIMIT:-512m}
-    cpus: ${N8N_QDRANT_CPU_LIMIT:-0.25}
-
   n8n:
     image: n8nio/n8n:2.6.3
     restart: unless-stopped
     depends_on:
       postgres:
-        condition: service_healthy
-      qdrant:
         condition: service_healthy
     environment:
       DB_TYPE: postgresdb
@@ -63,7 +45,6 @@ services:
       TZ: ${GENERIC_TIMEZONE:-Asia/Kuala_Lumpur}
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
       N8N_DIAGNOSTICS_ENABLED: "false"
-      QDRANT_URL: http://qdrant:6333
     volumes:
       - n8n-data:/home/node/.n8n
     expose: ["5678"]
@@ -81,4 +62,3 @@ services:
 volumes:
   postgres-data:
   n8n-data:
-  qdrant-data:
