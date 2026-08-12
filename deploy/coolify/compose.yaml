@@ -1,0 +1,64 @@
+# n8n non-production Coolify source of truth. One Coolify application is
+# required per environment; no service here is a production deployment.
+name: n8n-${N8N_ENVIRONMENT:?set N8N_ENVIRONMENT to dev or staging}
+
+services:
+  postgres:
+    image: postgres:16.3-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${N8N_DATABASE:?set N8N_DATABASE in Coolify}
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD:?set N8N_DB_PASSWORD in Coolify}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: ${N8N_POSTGRES_MEMORY_LIMIT:-512m}
+    cpus: ${N8N_POSTGRES_CPU_LIMIT:-0.50}
+
+  n8n:
+    image: n8nio/n8n:2.6.3
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${N8N_DATABASE:?set N8N_DATABASE in Coolify}
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD:?set N8N_DB_PASSWORD in Coolify}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?set N8N_ENCRYPTION_KEY in Coolify}
+      N8N_HOST: ${N8N_HOST:?set N8N_HOST in Coolify}
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: https
+      N8N_PROXY_HOPS: "1"
+      N8N_EDITOR_BASE_URL: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}
+      WEBHOOK_URL: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}/
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Kuala_Lumpur}
+      TZ: ${GENERIC_TIMEZONE:-Asia/Kuala_Lumpur}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    expose: ["5678"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5678/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    # Nonprod default: 768 MiB is more than twice the current VPA target and
+    # remains overrideable for a demonstrated workflow workload.
+    mem_limit: ${N8N_MEMORY_LIMIT:-768m}
+    cpus: ${N8N_CPU_LIMIT:-0.50}
+
+volumes:
+  postgres-data:
+  n8n-data:

@@ -9,7 +9,8 @@ metadata:
 spec:
   # replicaCount knob (default 1) lets consumers park ollama via values
   # without flipping aiStack.ollama.enabled (which would prune the model PVC).
-  replicas: {{ .Values.aiStack.ollama.replicaCount | default 1 }}
+  {{- $ollama := .Values.aiStack.ollama | default dict }}
+  replicas: {{ if hasKey $ollama "replicaCount" }}{{ $ollama.replicaCount }}{{ else }}1{{ end }}
   strategy:
     type: Recreate
   selector:
@@ -45,7 +46,6 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "n8n.fullname" . }}-ollama-data
       {{- end }}
-      {{- $ollama := .Values.aiStack.ollama | default dict }}
       {{- if hasKey $ollama "nodeSelector" }}
       nodeSelector:
         {{- toYaml $ollama.nodeSelector | nindent 8 }}
