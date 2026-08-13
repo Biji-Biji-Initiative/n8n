@@ -44,6 +44,9 @@ services:
       N8N_PORT: "5678"
       N8N_PROTOCOL: https
       N8N_PROXY_HOPS: "1"
+      # Coolify Compose routes domains per service. Keep this non-canonical
+      # until the validated target is ready for the DNS cutover.
+      SERVICE_FQDN_N8N_5678: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}
       N8N_EDITOR_BASE_URL: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}
       WEBHOOK_URL: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}/
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Kuala_Lumpur}
