@@ -1,6 +1,8 @@
-# n8n non-production Coolify source of truth. One Coolify application is
-# required per environment; no service here is a production deployment.
-name: n8n-${N8N_ENVIRONMENT:?set N8N_ENVIRONMENT to dev or staging}
+# n8n Coolify source of truth. One Coolify application is required per
+# environment. Production use is allowed only through the recovery, canonical
+# route, and separately reviewed BBI GitOps retirement gates in
+# docs/runbooks/production-coolify-migration.md.
+name: n8n-${N8N_ENVIRONMENT:?set N8N_ENVIRONMENT to dev, staging, or prod}
 
 services:
   postgres:
@@ -22,7 +24,10 @@ services:
     cpus: ${N8N_POSTGRES_CPU_LIMIT:-0.50}
 
   n8n:
-    image: n8nio/n8n:2.6.3
+    # Production migration MUST set N8N_IMAGE to the exact currently serving
+    # 1.16.0 digest. Upgrading n8n is a separate, post-cutover change; never
+    # combine its database migration with the Kubernetes exit.
+    image: ${N8N_IMAGE:-n8nio/n8n:2.6.3}
     restart: unless-stopped
     depends_on:
       postgres:
