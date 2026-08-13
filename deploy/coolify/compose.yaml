@@ -1,6 +1,8 @@
-# n8n non-production Coolify source of truth. One Coolify application is
-# required per environment; no service here is a production deployment.
-name: n8n-${N8N_ENVIRONMENT:?set N8N_ENVIRONMENT to dev or staging}
+# n8n Coolify source of truth. One Coolify application is required per
+# environment. Production use is allowed only through the recovery, canonical
+# route, and separately reviewed BBI GitOps retirement gates in
+# docs/runbooks/production-coolify-migration.md.
+name: n8n-${N8N_ENVIRONMENT:?set N8N_ENVIRONMENT to dev, staging, or prod}
 
 services:
   postgres:
@@ -21,12 +23,98 @@ services:
     mem_limit: ${N8N_POSTGRES_MEMORY_LIMIT:-512m}
     cpus: ${N8N_POSTGRES_CPU_LIMIT:-0.50}
 
-  n8n:
-    image: n8nio/n8n:2.6.3
-    restart: unless-stopped
+  # The target must recover data before n8n starts for the first time. This
+  # one-shot service downloads only the operator-selected, immutable recovery
+  # objects. It is intentionally inactive unless N8N_RESTORE_ENABLED=true.
+  # Do not leave the temporary B2 reader credentials in Coolify after the
+  # restore receipt is captured.
+  restore-fetch:
+    image: rclone/rclone@sha256:1619a625f845e169c34b952cf40c483c0392965b821c5155cde8cbfd35254a96
+    restart: "no"
+    exclude_from_hc: true
+    environment:
+      N8N_RESTORE_ENABLED: ${N8N_RESTORE_ENABLED:-false}
+      N8N_RESTORE_BUCKET: ${N8N_RESTORE_BUCKET:-}
+      N8N_RESTORE_DUMP_OBJECT: ${N8N_RESTORE_DUMP_OBJECT:-}
+      N8N_RESTORE_HOME_OBJECT: ${N8N_RESTORE_HOME_OBJECT:-}
+      RCLONE_CONFIG_B2_TYPE: b2
+      RCLONE_CONFIG_B2_ACCOUNT: ${N8N_RESTORE_B2_ACCOUNT_ID:-}
+      RCLONE_CONFIG_B2_KEY: ${N8N_RESTORE_B2_APPLICATION_KEY:-}
+    volumes:
+      - restore-staging:/restore
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - >-
+        if [ "$$N8N_RESTORE_ENABLED" != "true" ]; then exit 0; fi;
+        test -n "$$N8N_RESTORE_BUCKET";
+        test -n "$$N8N_RESTORE_DUMP_OBJECT";
+        test -n "$$N8N_RESTORE_HOME_OBJECT";
+        test -n "$$RCLONE_CONFIG_B2_ACCOUNT";
+        test -n "$$RCLONE_CONFIG_B2_KEY";
+        rclone copyto "b2:$$N8N_RESTORE_BUCKET/$$N8N_RESTORE_DUMP_OBJECT" /restore/n8n.dump;
+        rclone copyto "b2:$$N8N_RESTORE_BUCKET/$$N8N_RESTORE_HOME_OBJECT" /restore/n8n-home.tar.gz
+
+  # Restore into new Coolify volumes only. A completed marker prevents an
+  # already-proven recovery from being replayed on later deployments; an
+  # unknown non-empty n8n volume fails closed rather than being overwritten.
+  restore-data:
+    image: postgres:16.3-alpine
+    user: "0:0"
+    restart: "no"
+    exclude_from_hc: true
     depends_on:
       postgres:
         condition: service_healthy
+      restore-fetch:
+        condition: service_completed_successfully
+    environment:
+      N8N_ENVIRONMENT: ${N8N_ENVIRONMENT:?set N8N_ENVIRONMENT to dev, staging, or prod}
+      N8N_RESTORE_ENABLED: ${N8N_RESTORE_ENABLED:-false}
+      N8N_RESTORE_DUMP_SHA256: ${N8N_RESTORE_DUMP_SHA256:-}
+      N8N_RESTORE_HOME_SHA256: ${N8N_RESTORE_HOME_SHA256:-}
+      N8N_DATABASE: ${N8N_DATABASE:?set N8N_DATABASE in Coolify}
+      N8N_DB_PASSWORD: ${N8N_DB_PASSWORD:?set N8N_DB_PASSWORD in Coolify}
+    volumes:
+      - restore-staging:/restore:ro
+      - restore-state:/restore-state
+      - n8n-data:/n8n-data
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - >-
+        marker=/restore-state/n8n-restore-v1;
+        if [ -f "$$marker" ]; then exit 0; fi;
+        if [ "$$N8N_RESTORE_ENABLED" != "true" ]; then
+          if [ "$$N8N_ENVIRONMENT" = "prod" ]; then
+            echo "production n8n requires a verified first restore" >&2; exit 1;
+          fi;
+          exit 0;
+        fi;
+        test -n "$$N8N_RESTORE_DUMP_SHA256";
+        test -n "$$N8N_RESTORE_HOME_SHA256";
+        test "$$(sha256sum /restore/n8n.dump | awk '{print $$1}')" = "$$N8N_RESTORE_DUMP_SHA256";
+        test "$$(sha256sum /restore/n8n-home.tar.gz | awk '{print $$1}')" = "$$N8N_RESTORE_HOME_SHA256";
+        pg_restore --list /restore/n8n.dump >/dev/null;
+        tar -tzf /restore/n8n-home.tar.gz >/dev/null;
+        if find /n8n-data -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+          echo "refusing to overwrite non-empty n8n target volume" >&2; exit 1;
+        fi;
+        export PGPASSWORD="$$N8N_DB_PASSWORD";
+        pg_restore --host=postgres --username=n8n --dbname="$$N8N_DATABASE" --clean --if-exists --no-owner --no-acl /restore/n8n.dump;
+        tar -xzf /restore/n8n-home.tar.gz -C /n8n-data --no-same-owner;
+        chown -R 1000:1000 /n8n-data;
+        printf '%s\n' "dump=$$N8N_RESTORE_DUMP_SHA256 home=$$N8N_RESTORE_HOME_SHA256" > "$$marker"
+
+  n8n:
+    # Production migration MUST set N8N_IMAGE to the exact currently serving
+    # 1.16.0 digest. Upgrading n8n is a separate, post-cutover change; never
+    # combine its database migration with the Kubernetes exit.
+    image: ${N8N_IMAGE:-n8nio/n8n:2.6.3}
+    restart: unless-stopped
+    depends_on:
+      restore-data:
+        condition: service_completed_successfully
     environment:
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
@@ -39,6 +127,9 @@ services:
       N8N_PORT: "5678"
       N8N_PROTOCOL: https
       N8N_PROXY_HOPS: "1"
+      # Coolify Compose routes domains per service. Keep this non-canonical
+      # until the validated target is ready for the DNS cutover.
+      SERVICE_FQDN_N8N_5678: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}
       N8N_EDITOR_BASE_URL: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}
       WEBHOOK_URL: ${N8N_PUBLIC_URL:?set N8N_PUBLIC_URL in Coolify}/
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Kuala_Lumpur}
@@ -62,3 +153,5 @@ services:
 volumes:
   postgres-data:
   n8n-data:
+  restore-staging:
+  restore-state:
