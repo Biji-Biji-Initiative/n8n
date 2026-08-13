@@ -51,22 +51,30 @@ Kubernetes service hostname, a host-local image build, or a mutable image tag.
 1. Validate the compose projection with the validation-only environment:
 
    ```sh
-   docker compose --env-file deploy/coolify/compose.example.env \
-     -f deploy/coolify/compose.yaml config --quiet
+   bash scripts/validate-coolify-compose.sh --quiet
    ```
 
 2. Select a fresh successful `n8n-pg-backup` logical backup and prove the
    backup object is readable. Independently archive and verify the small n8n
    home directory. A Job completion or a partial Velero backup alone is not a
-   recovery receipt.
-3. Restore both data planes into new Coolify volumes. Verify database schema,
+   recovery receipt. Record the exact B2 object paths and SHA-256 values.
+3. For the first production target deployment, set `N8N_RESTORE_ENABLED=true`
+   and provide `N8N_RESTORE_BUCKET`, `N8N_RESTORE_DUMP_OBJECT`,
+   `N8N_RESTORE_HOME_OBJECT`, `N8N_RESTORE_DUMP_SHA256`, and
+   `N8N_RESTORE_HOME_SHA256` in Coolify, with temporary scoped B2 reader
+   credentials. `restore-fetch` and `restore-data` verify both artifacts and
+   write an isolated restore marker before n8n is allowed to start. A
+   non-empty unmarked volume fails closed. Remove the temporary B2 reader
+   credentials and set `N8N_RESTORE_ENABLED=false` only after the restore
+   receipt is captured; the durable marker permits later redeployments.
+4. Restore both data planes into new Coolify volumes. Verify database schema,
    workflow, credential, and execution counts; verify that the preserved
    encryption key opens the restored instance; and verify `/healthz` plus an
    authenticated admin session on the shadow route.
-4. Capture the shadow route, canonical Kubernetes route, and rollback route
+5. Capture the shadow route, canonical Kubernetes route, and rollback route
    immediately before DNS changes. Move canonical routing only after all three
    are recorded and TLS is valid.
-5. After stable canonical proof, land a separate reviewed BBI GitOps carrier
+6. After stable canonical proof, land a separate reviewed BBI GitOps carrier
    that removes the n8n application and backup declarations. Do not delete
    Longhorn storage imperatively. Retain source PV identities for the approved
    recovery window, then use a later source-controlled reclamation decision.
